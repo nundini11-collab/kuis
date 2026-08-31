@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHYSIQUEST — Physics Learning Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --bg:#0F1B2D; --bg2:#0B1522; --panel:#16233A; --panel2:#1D2C46; --line:#2A3B57;
+    --ember:#FF6B3D; --ember-dark:#C8431B; --gold:#F2B705; --success:#41B883; --danger:#E24B4B;
+    --text:#E9EEF5; --muted:#8FA3BB; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(1200px 600px at 50% -10%, #14263F 0%, var(--bg) 55%, var(--bg2) 100%);
+    color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; padding-bottom:60px;
+  }
+  h1,h2,h3,.display{font-family:'Bebas Neue',sans-serif; letter-spacing:0.03em;}
+
+  header{display:flex; justify-content:space-between; align-items:center; padding:22px 28px;
+    border-bottom:1px solid var(--line); background:linear-gradient(180deg, rgba(22,35,58,0.9), rgba(22,35,58,0.4));}
+  header .brand{display:flex; align-items:center; gap:12px;}
+  header .brand .flame{width:38px; height:38px; border-radius:10px;
+    background:linear-gradient(145deg, var(--ember), var(--ember-dark));
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+    box-shadow:0 0 18px rgba(255,107,61,0.45);}
+  header h1{font-size:28px; margin:0; line-height:1;}
+  header .subtitle{font-size:12.5px; color:var(--muted); margin-top:2px;}
+  
+  .header-actions{display:flex; align-items:center; gap:12px;}
+  .player-tag{background:var(--panel2); border:1px solid var(--line); padding:6px 14px; border-radius:999px; font-size:13px; font-weight:600; color:var(--ember);}
+  .stat-pill{display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
+    padding:8px 16px; border-radius:999px; font-weight:700; font-size:14px;}
+  .stat-pill .star{color:var(--gold);}
+
+  .map-wrap{max-width:1000px; margin:36px auto 10px; padding:0 24px;}
+  .map-title{font-size:15px; color:var(--muted); margin-bottom:18px; font-weight:600;}
+  .map-svg-wrap{position:relative;}
+  svg.path-line{position:absolute; top:0; left:0; width:100%; height:100%; z-index:0;}
+  .nodes{position:relative; z-index:1; display:grid; grid-template-columns:repeat(6,1fr); gap:6px; align-items:end; height:340px;}
+  .node-col{display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;}
+  .node{width:78px; height:78px; border-radius:20px; display:flex; align-items:center; justify-content:center;
+    font-family:'Bebas Neue',sans-serif; font-size:30px; cursor:pointer; border:2px solid var(--line);
+    background:var(--panel); position:relative; transition:transform .15s ease;}
+  .node:hover{transform:translateY(-4px);}
+  .node.locked{background:#151F30; color:#546578; cursor:not-allowed; border-style:dashed;}
+  .node.locked:hover{transform:none;}
+  .node.available{background:linear-gradient(160deg, var(--panel2), var(--panel)); border-color:var(--ember);
+    box-shadow:0 0 0 4px rgba(255,107,61,0.12);}
+  .node.cleared{background:linear-gradient(160deg, #1E3324, #16261C); border-color:var(--success);}
+  .node.boss{width:92px; height:92px; border-radius:24px; font-size:34px;}
+  .node-stars{position:absolute; bottom:-14px; display:flex; gap:2px;}
+  .node-stars span{font-size:13px; color:#3A4B66;}
+  .node-stars span.on{color:var(--gold);}
+  .node-label{margin-top:22px; font-size:12.5px; color:var(--muted); text-align:center; max-width:100px; font-weight:600;}
+  .node-label b{display:block; color:var(--text); font-size:13.5px;}
+
+  .import-panel{max-width:1000px; margin:38px auto; padding:20px 24px; background:var(--panel);
+    border:1px solid var(--line); border-radius:var(--radius);}
+  .import-panel h3{margin:0 0 4px; font-size:20px;}
+  .import-panel p{margin:0 0 14px; font-size:13px; color:var(--muted); line-height:1.5;}
+  .import-row{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom: 12px;}
+  select, input[type=text], input[type=number], textarea{background:var(--bg2); border:1px solid var(--line);
+    color:var(--text); padding:9px 12px; border-radius:8px; font-family:'Inter',sans-serif; font-size:13.5px;}
+  .btn{border:none; cursor:pointer; font-family:'Inter',sans-serif; font-weight:700; padding:10px 18px;
+    border-radius:8px; font-size:13.5px; transition: 0.2s ease;}
+  .btn-ember{background:linear-gradient(160deg, var(--ember), var(--ember-dark)); color:#fff;}
+  .btn-ghost{background:transparent; border:1px solid var(--line); color:var(--text);}
+  .btn-success{background:linear-gradient(160deg, #4DCB93, #2E9E6D); color:#082018;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed;}
+  #importStatus{margin-top:8px; font-size:12.5px; color:var(--success); min-height:16px;}
+  #importStatus.err{color:var(--danger);}
+  label.file-btn{background:var(--bg2); border:1px dashed var(--line); padding:9px 14px; border-radius:8px;
+    cursor:pointer; font-size:13px; color:var(--muted);}
+  label.file-btn input{display:none;}
+
+  .overlay{position:fixed; inset:0; background:rgba(6,10,17,0.75); display:none; align-items:center;
+    justify-content:center; z-index:50; padding:16px;}
+  .overlay.open{display:flex;}
+  .modal{width:100%; max-width:600px; background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    overflow:hidden; max-height:90vh; display:flex; flex-direction:column;}
+  .modal-head{padding:20px 22px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:flex-start;}
+  .modal-head h2{margin:0; font-size:26px; line-height:1;}
+  .modal-head .sub{font-size:12.5px; color:var(--muted); margin-top:3px;}
+  .close-x{background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer;}
+  .modal-body{padding:20px 22px; overflow-y:auto;}
+
+  .materi-box p{font-size:14px; line-height:1.65; margin:0 0 12px; color:var(--text);}
+  .materi-box ul{margin:0 0 14px; padding-left:20px;}
+  .materi-box li{font-size:13.5px; line-height:1.6; margin-bottom:6px; color:var(--text);}
+  .materi-box .formula{background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:8px 12px;
+    font-family:'Inter',sans-serif; font-weight:700; color:var(--gold); display:inline-block; margin:4px 0;}
+
+  .babak-tabs{display:flex; gap:8px; margin-bottom:16px;}
+  .tab{flex:1; text-align:center; padding:9px 6px; border-radius:8px; font-size:12px; font-weight:700;
+    background:var(--bg2); color:var(--muted); border:1px solid var(--line);}
+  .tab.active{background:var(--ember); color:#fff; border-color:var(--ember);}
+  .tab.done{background:rgba(65,184,131,0.15); color:var(--success); border-color:var(--success);}
+
+  .timer-wrap{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+  .timer-track{flex:1; height:8px; background:var(--bg2); border-radius:99px; overflow:hidden;}
+  .timer-fill{height:100%; background:var(--success); width:100%; transition:width 1s linear, background .3s;}
+  .timer-num{font-family:'Bebas Neue'; font-size:20px; min-width:34px; text-align:right;}
+
+  .q-box{background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:16px;}
+  .q-label{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ember); font-weight:700; margin-bottom:6px;}
+  .q-text{font-size:15px; line-height:1.55; margin-bottom:14px;}
+  .answer-row{display:flex; gap:8px; align-items:center;}
+  .answer-row input, .answer-row textarea{flex:1; width:100%;}
+  textarea{min-height:90px; resize:vertical;}
+  .feedback{margin-top:12px; padding:12px; border-radius:10px; font-size:13px; line-height:1.5; display:none;}
+  .feedback.show{display:block;}
+  .feedback.ok{background:rgba(65,184,131,0.12); border:1px solid var(--success); color:#BFF0DA;}
+  .feedback.no{background:rgba(226,75,75,0.12); border:1px solid var(--danger); color:#FBCFCF;}
+  .model-ans{margin-top:8px; font-size:12.5px; color:var(--muted); font-style:italic;}
+
+  .result-wrap{text-align:center; padding:10px 0;}
+  .result-stars{font-size:38px; margin:10px 0;}
+  .result-stars span{color:#3A4B66;}
+  .result-stars span.on{color:var(--gold);}
+  .result-pct{font-size:44px; font-family:'Bebas Neue'; color:var(--text);}
+  .result-msg{font-size:13.5px; color:var(--muted); margin-bottom:18px;}
+
+  footer{text-align:center; color:var(--muted); font-size:12px; margin-top:40px; padding:0 20px;}
+
+  @media (max-width:760px){
+    .nodes{grid-template-columns:repeat(3,1fr); height:auto; row-gap:36px;}
+    .node-col{height:auto;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="flame">🔥</div>
+    <div>
+      <h1>PHYSIQUEST</h1>
+      <div class="subtitle">Physics Learning Adventure</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="player-tag" id="playerTag">👤 Tamu</div>
+    <div class="stat-pill"><span class="star">★</span> <span id="totalStars">0</span> / 18</div>
+    <button class="btn btn-ghost" onclick="toggleAdminPrompt()" style="font-size:12px; padding:6px 12px;">🔑 Admin</button>
+  </div>
+</header>
+
+<div class="map-wrap">
+  <div class="map-title">Peta Misi — pahami materi, lalu taklukkan tiap base secara berurutan</div>
+  <div class="map-svg-wrap">
+    <svg class="path-line" viewBox="0 0 600 200" preserveAspectRatio="none">
+      <path d="M 50 160 Q 130 60 210 130 T 370 100 T 530 150" stroke="#2A3B57" stroke-width="3" fill="none" stroke-dasharray="2 10" stroke-linecap="round"/>
+    </svg>
+    <div class="nodes" id="nodesWrap"></div>
+  </div>
+</div>
+
+<!-- PANEL ADMIN (GURU) -->
+<div class="import-panel" id="adminPanel" style="display:none;">
+  <h3>Panel Pembuat (Admin / Guru)</h3>
+  <p>Atur integrasi Google Apps Script (database nilai) dan impor bank soal baru di sini.</p>
+  
+  <div style="margin-bottom:16px;">
+    <label style="font-size:12.5px; color:var(--muted); font-weight:600;">Google Apps Script Web App URL:</label>
+    <div class="answer-row" style="margin-top:6px;">
+      <input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+      <button class="btn btn-ember" onclick="saveScriptUrl()">Simpan URL</button>
+    </div>
+  </div>
+
+  <div class="import-row">
+    <label class="file-btn">📄 Impor PDF Soal
+      <input type="file" id="pdfInput" accept="application/pdf">
+    </label>
+    <button class="btn btn-ghost" onclick="downloadTemplate()">Unduh Template Format</button>
+    <button class="btn btn-success" onclick="saveGameData()">Simpan Soal</button>
+    <button class="btn btn-ghost" onclick="resetGameData()">Kembalikan Soal Awal</button>
+    <button class="btn btn-ghost" onclick="loadTracker()">📊 Lihat Tracker Siswa</button>
+  </div>
+  <div id="importStatus"></div>
+  <div id="trackerPanel" style="display:none; margin-top:18px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+      <div><div style="font-weight:800;">Tracker Pengerjaan Siswa</div><div style="font-size:12px; color:var(--muted);">Status, progres, waktu, dan nilai terakhir.</div></div>
+      <button class="btn btn-ghost" onclick="loadTracker()">↻ Refresh</button>
+    </div>
+    <div id="trackerStatus" style="font-size:12.5px; color:var(--muted); margin-bottom:10px;"></div>
+    <div style="overflow:hidden; border:1px solid var(--line); border-radius:10px;">
+      <iframe id="trackerFrame" title="Tracker Siswa" style="width:100%; height:360px; border:0; background:var(--bg2);"></iframe>
+    </div>
+  </div>
+</div>
+
+<footer>PHYSIQUEST · Media Pembelajaran Fisika · Fase F Kurikulum Merdeka</footer>
+
+<!-- MODAL OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="modalTitle">Base</h2>
+        <div class="sub" id="modalSub">Subjudul base</div>
+      </div>
+      <button class="close-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   KONFIGURASI & GLOBAL STATE
+   ========================================================= */
+const BABAK_WEIGHT = { memorize: 20, recall: 40, examine: 40 };
+const BABAK_ORDER  = ["memorize","recall","examine"];
+const BABAK_LABEL  = { memorize:"Memorize", recall:"Recall", examine:"Examine" };
+const TIME_DEFAULT = { memorize:20, recall:120, examine:150 };
+const PASS_THRESHOLD = 75;
+const STORAGE_KEY = "physiquest-question-data-v2";
+
+let scriptUrl = localStorage.getItem("physiquest_script_url") || "";
+let playerName = localStorage.getItem("physiquest_player_name") || "";
+let trackerId = sessionStorage.getItem("physiquest_tracker_id") || (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+sessionStorage.setItem("physiquest_tracker_id", trackerId);
+let trackerHandle = null;
+let trackerStartedAt = null;
+
+/* =========================================================
+   DATA MATERI + SOAL (6 Base Full)
+   ========================================================= */
+let BASES = [
+{ id:1, name:"Kampung Suhu", subtitle:"Suhu & Pemuaian", icon:"🌡️",
+  materi:`
+    <p>Suhu adalah ukuran energi kinetik rata-rata partikel penyusun benda. Suhu diukur menggunakan termometer, misalnya termometer zat cair, bimetal, atau termokopel.</p>
+    <p>Skala suhu yang umum: Celcius, Reamur, Fahrenheit, dan Kelvin (satuan SI).</p>
+    <div class="formula">°F = (9/5)·°C + 32 &nbsp;•&nbsp; K = °C + 273</div>
+    <p>Saat suhu naik, hampir semua zat memuai:</p>
+    <ul>
+      <li>Pemuaian panjang: <b>ΔL = L₀·α·ΔT</b></li>
+      <li>Pemuaian luas: <b>ΔA = A₀·β·ΔT</b> (β ≈ 2α)</li>
+      <li>Pemuaian volume: <b>ΔV = V₀·γ·ΔT</b> (γ ≈ 3α)</li>
+    </ul>
+    <p>Penerapan: celah sambungan rel kereta api, bimetal pada termostat/setrika otomatis.</p>
+  `,
+  babak:{
+    memorize:[
+      {q:`Satuan suhu dalam Sistem Internasional (SI) adalah ...`, type:"short", accepted:["kelvin","k"]},
+      {q:`Alat ukur suhu yang bekerja berdasarkan prinsip pemuaian dua logam berbeda disebut ...`, type:"short", accepted:["termometerbimetal","bimetal"]}
+    ],
+    recall:[
+      {q:`Konversikan suhu 100°F ke skala Celcius! (jawab dalam °C, 1 desimal)`, type:"numeric", answer:37.8, tol:0.6, unit:"°C"},
+      {q:`Batang logam panjang 2 m dipanaskan dari 20°C menjadi 70°C (α = 0,000012/°C). Berapa pertambahan panjangnya? (jawab dalam mm)`, type:"numeric", answer:1.2, tol:0.15, unit:"mm"}
+    ],
+    examine:[
+      {
+        q:`Rel kereta api selalu dipasang dengan celah kecil antar sambungan. Jelaskan mengapa hal ini penting, dan apa yang terjadi jika celah dihilangkan!`, 
+        type:"clusters", 
+        clusters:[
+          ["memuai","muai","panas"],
+          ["celah","ruang","longgar"],
+          ["melengkung","bengkok","rusak"]
+        ], 
+        model:`Logam rel memuai saat suhu naik. Celah memberi ruang muai agar rel tidak melengkung/rusak. Tanpa celah, rel bisa melengkung dan membahayakan keselamatan.`
+      },
+      {
+        q:`Termometer alkohol lebih dipilih daripada raksa untuk mengukur suhu ekstrem dingin. Jelaskan alasannya!`, 
+        type:"clusters", 
+        clusters:[
+          ["titik beku","membeku","beku"],
+          ["raksa"],
+          ["alkohol"]
+        ], 
+        model:`Raksa membeku sekitar -39°C sehingga tidak bisa mengukur di bawahnya. Alkohol punya titik beku jauh lebih rendah (~-114°C) sehingga tetap cair pada suhu ekstrem dingin.`
+      }
+    ]
+  }
+},
+{ id:2, name:"Benteng Kalor", subtitle:"Kalor & Perubahan Wujud", icon:"🔥",
+  materi:`
+    <p>Kalor adalah energi yang berpindah karena adanya perbedaan suhu. Kalor yang diperlukan untuk menaikkan suhu suatu zat (tanpa mengubah wujudnya):</p>
+    <div class="formula">Q = m · c · ΔT</div>
+    <p>Saat zat berubah wujud (melebur, membeku, menguap, mengembun, dst), kalor yang terlibat disebut kalor laten, dan <b>suhu zat tetap</b> selama proses ini berlangsung:</p>
+    <div class="formula">Q = m · L</div>
+    <p>Pada grafik pemanasan suhu vs kalor, bagian miring artinya suhu sedang naik, sedangkan bagian mendatar artinya sedang terjadi perubahan wujud.</p>
+  `,
+  babak:{
+    memorize:[
+      {q:`Tuliskan rumus kalor untuk menaikkan suhu suatu zat (tanpa perubahan wujud)!`, type:"short", accepted:["qmct","qmcdt"]},
+      {q:`Apa yang dimaksud dengan kalor laten?`, type:"clusters", clusters:[["wujud"],["tanpa","tetap"],["suhu"]], model:`Kalor laten adalah kalor untuk mengubah wujud zat tanpa disertai perubahan suhu.`}
+    ],
+    recall:[
+      {q:`Hitung kalor untuk memanaskan 2 kg air dari 25°C menjadi 75°C! (c = 4200 J/kg°C, jawab dalam kJ)`, type:"numeric", answer:420, tol:8, unit:"kJ"},
+      {q:`Berapa kalor untuk melebur 0,5 kg es? (L = 336.000 J/kg, jawab dalam kJ)`, type:"numeric", answer:168, tol:5, unit:"kJ"}
+    ],
+    examine:[
+      {q:`Pada grafik pemanasan, kenapa suhu zat tetap (mendatar) saat perubahan wujud meski terus dipanaskan?`, type:"clusters", clusters:[["ikatan","partikel"],["wujud"],["laten"]], model:`Energi kalor dipakai memutus ikatan antarpartikel untuk mengubah wujud (kalor laten), bukan menaikkan suhu.`},
+      {q:`Bandingkan mendinginkan minuman dengan es batu vs air dingin 5°C bermassa sama. Mana yang lebih efektif dan mengapa?`, type:"clusters", clusters:[["es"],["laten","lebur"],["efektif","menyerap"]], model:`Es lebih efektif karena selain menyerap kalor untuk kenaikan suhunya, es juga menyerap kalor laten lebur yang besar.`}
+    ]
+  }
+},
+{ id:3, name:"Markas Perpindahan", subtitle:"Perpindahan Kalor", icon:"🌀",
+  materi:`
+    <p>Ada tiga cara kalor berpindah:</p>
+    <ul>
+      <li><b>Konduksi</b> — lewat medium padat tanpa perpindahan partikel. <span class="formula">H = k·A·ΔT / L</span></li>
+      <li><b>Konveksi</b> — lewat aliran fluida (alami atau paksa).</li>
+      <li><b>Radiasi</b> — tanpa medium sama sekali, lewat gelombang elektromagnetik.</li>
+    </ul>
+    <p>Contoh penerapan: termos (meredam ketiganya sekaligus), efek rumah kaca, desain atap rumah sesuai iklim.</p>
+  `,
+  babak:{
+    memorize:[
+      {q:`Sebutkan 3 jenis perpindahan kalor!`, type:"clusters", clusters:[["konduksi"],["konveksi"],["radiasi"]], model:`Konduksi, konveksi, radiasi.`},
+      {q:`Perpindahan kalor yang tidak memerlukan medium disebut ...`, type:"short", accepted:["radiasi"]}
+    ],
+    recall:[
+      {q:`Logam k=200 W/m°C, panjang 0,5 m, luas 0,02 m², ΔT=40°C. Hitung laju konduksinya! (Watt)`, type:"numeric", answer:320, tol:10, unit:"W"},
+      {q:`Panas matahari sampai ke bumi melewati ruang hampa udara. Jenis perpindahan kalornya adalah ...`, type:"short", accepted:["radiasi"]}
+    ],
+    examine:[
+      {q:`Termos memakai dinding kaca berlapis + ruang hampa + lapisan cermin di dalam. Jelaskan bagaimana desain ini meredam ketiga jenis perpindahan kalor!`, type:"clusters", clusters:[["hampa"],["konduksi","konveksi"],["cermin","radiasi"]], model:`Ruang hampa mencegah konduksi & konveksi karena tak ada medium. Lapisan cermin memantulkan kalor radiasi.`},
+      {q:`Bandingkan desain atap rumah tropis dengan rumah di daerah bersalju terkait prinsip perpindahan kalor!`, type:"clusters", clusters:[["radiasi"],["konveksi"],["isolasi","konduksi"]], model:`Rumah tropis: warna terang memantulkan radiasi, ventilasi melepas panas via konveksi. Rumah bersalju: atap gelap menyerap radiasi, isolasi tebal mengurangi konduksi keluar.`}
+    ]
+  }
+},
+{ id:4, name:"Istana Asas Black", subtitle:"Asas Black", icon:"⚖️",
+  materi:`
+    <p>Dalam sistem tertutup, berlaku Asas Black: kalor yang dilepaskan benda bersuhu tinggi sama dengan kalor yang diterima benda bersuhu rendah.</p>
+    <div class="formula">Q lepas = Q terima</div>
+    <p>Kalau salah satu zat mengalami perubahan wujud (misalnya es yang melebur), kalor laten ikut dihitung sebagai bagian dari kalor yang diterima.</p>
+    <p>Alat yang dipakai untuk mengukur pertukaran kalor secara eksperimen disebut kalorimeter.</p>
+  `,
+  babak:{
+    memorize:[
+      {q:`Bunyikan Asas Black secara singkat!`, type:"clusters", clusters:[["lepas"],["terima"],["sama"]], model:`Kalor yang dilepas benda bersuhu tinggi sama dengan kalor yang diterima benda bersuhu rendah pada sistem tertutup.`},
+      {q:`Alat untuk mengukur pertukaran kalor pada sistem tertutup disebut ...`, type:"short", accepted:["kalorimeter"]}
+    ],
+    recall:[
+      {q:`100 g air bersuhu 80°C dicampur 200 g air bersuhu 20°C. Tentukan suhu akhir campuran! (°C)`, type:"numeric", answer:40, tol:2, unit:"°C"},
+      {q:`Es 50 g bersuhu 0°C dicampur 200 g air bersuhu 25°C. Tentukan suhu akhir campuran! (°C, L=336000 J/kg, c=4200 J/kg°C)`, type:"numeric", answer:4, tol:2, unit:"°C"}
+    ],
+    examine:[
+      {q:`Hasil praktikum Asas Black di kelas selalu menunjukkan suhu akhir lebih rendah dari hitungan teori. Analisis penyebabnya!`, type:"clusters", clusters:[["terbuang","hilang"],["lingkungan","udara"],["tidak tertutup","sempurna"]], model:`Sistem nyata tidak terisolasi sempurna, sebagian kalor terbuang ke lingkungan/wadah sehingga suhu akhir lebih rendah dari teori.`},
+      {q:`Jika kalorimeter punya massa & kalor jenis besar (tidak diabaikan), bagaimana pengaruhnya dan cara koreksinya?`, type:"clusters", clusters:[["kalorimeter"],["menyerap"],["koreksi","tambah"]], model:`Kalorimeter ikut menyerap kalor sehingga hasil menyimpang jika diabaikan. Koreksi: tambahkan suku m×c×ΔT kalorimeter ke sisi kalor diterima.`}
+    ]
+  }
+},
+{ id:5, name:"Reaktor Termodinamika", subtitle:"Hukum Termodinamika I", icon:"⚙️",
+  materi:`
+    <p>Hukum Termodinamika I adalah kekekalan energi untuk sistem gas:</p>
+    <div class="formula">ΔU = Q − W</div>
+    <p>dengan ΔU = perubahan energi dalam, Q = kalor yang diterima sistem, W = usaha yang dilakukan sistem (W = P·ΔV, khusus tekanan tetap).</p>
+    <p>Empat proses termodinamika gas:</p>
+    <ul>
+      <li><b>Isobarik</b> — tekanan tetap</li>
+      <li><b>Isokhorik</b> — volume tetap (W = 0)</li>
+      <li><b>Isotermal</b> — suhu tetap (ΔU = 0 untuk gas ideal)</li>
+      <li><b>Adiabatik</b> — tanpa pertukaran kalor (Q = 0)</li>
+    </ul>
+  `,
+  babak:{
+    memorize:[
+      {q:`Tuliskan rumus/bunyi Hukum Termodinamika I! (format: ΔU = Q − W)`, type:"short", accepted:["uqw"]},
+      {q:`Sebutkan 4 proses termodinamika berdasarkan besaran yang dijaga tetap!`, type:"clusters", clusters:[["isobarik"],["isokhorik"],["isotermal"],["adiabatik"]], model:`Isobarik, isokhorik, isotermal, adiabatik.`}
+    ],
+    recall:[
+      {q:`Gas isobarik P=2×10^5 Pa, volume berubah dari 3 L ke 5 L. Hitung usaha gas! (Joule)`, type:"numeric", answer:400, tol:15, unit:"J"},
+      {q:`Gas menerima kalor 500 J dan melakukan usaha 200 J. Tentukan ΔU (energi dalam)! (Joule)`, type:"numeric", answer:300, tol:10, unit:"J"}
+    ],
+    examine:[
+      {q:`Grafik P-V berupa garis mendatar dari V1 ke V2 (V2>V1). Jelaskan jenis prosesnya dan cara menentukan usaha dari grafik ini!`, type:"clusters", clusters:[["isobarik"],["luas"],["tekanan tetap"]], model:`Proses isobarik (tekanan tetap). Usaha ditentukan dari luas daerah di bawah grafik P-V (P×ΔV).`},
+      {q:`Pada proses adiabatik (Q=0), gas dimampatkan dengan cepat. Jelaskan apa yang terjadi pada energi dalam & suhu gas, beri satu contoh penerapannya!`, type:"clusters", clusters:[["energi dalam","naik"],["suhu"],["kompresi","pompa","diesel"]], model:`Karena Q=0, ΔU=-W. Saat gas dimampatkan, energi dalam & suhu naik meski tak ada kalor masuk. Contoh: pompa sepeda terasa panas, mesin diesel.`}
+    ]
+  }
+},
+{ id:6, name:"Sang Entropi", subtitle:"Termodinamika II & Mesin Kalor", icon:"👑", boss:true,
+  materi:`
+    <p>Hukum Termodinamika II: kalor mengalir secara alami dari benda bersuhu tinggi ke benda bersuhu rendah, dan tidak bisa terjadi sebaliknya secara spontan.</p>
+    <p>Efisiensi mesin Carnot (mesin kalor ideal):</p>
+    <div class="formula">η = 1 − (Tr / Tt)</div>
+    <p>dengan Tr = suhu reservoir dingin, Tt = suhu reservoir panas (dalam Kelvin). Efisiensi mesin nyata selalu lebih rendah dari efisiensi Carnot karena gesekan dan kehilangan energi lain. Mesin pendingin/pompa kalor bekerja dengan prinsip kebalikan dari mesin kalor.</p>
+  `,
+  babak:{
+    memorize:[
+      {q:`Bunyikan Hukum Termodinamika II (versi kalor)!`, type:"clusters", clusters:[["tinggi"],["rendah"],["spontan","alami"]], model:`Kalor mengalir alami dari suhu tinggi ke suhu rendah, tidak bisa sebaliknya secara spontan.`},
+      {q:`Tuliskan rumus efisiensi mesin Carnot! (format: η = 1 − Tr/Tt)`, type:"short", accepted:["1trtt"]}
+    ],
+    recall:[
+      {q:`Mesin Carnot bekerja antara reservoir 600 K dan 300 K. Hitung efisiensinya! (dalam %)`, type:"numeric", answer:50, tol:3, unit:"%"},
+      {q:`Mesin kalor menyerap 1000 J, membuang 600 J. Hitung efisiensinya! (dalam %)`, type:"numeric", answer:40, tol:3, unit:"%"}
+    ],
+    examine:[
+      {q:`Jelaskan mengapa mesin kalor dengan efisiensi 100% mustahil, walau Hukum Termodinamika I tidak melarangnya!`, type:"clusters", clusters:[["hukum ii","hukum 2"],["buang","terbuang"],["entropi","reservoir"]], model:`Hukum II mewajibkan sebagian kalor dibuang ke reservoir dingin agar siklus berjalan; efisiensi 100% berarti entropi berkurang, melanggar Hukum II.`},
+      {q:`Seorang insinyur ingin memaksimalkan efisiensi mesin kalor. Jelaskan strateginya berdasarkan rumus Carnot, dan kendala praktisnya!`, type:"clusters", clusters:[["suhu tinggi"],["suhu rendah"],["material","gesekan"]], model:`Naikkan suhu reservoir panas & turunkan suhu reservoir dingin. Kendala: ketahanan material, biaya, dan gesekan/kehilangan energi nyata.`}
+    ]
+  }
+}
+];
+
+let progress = {};
+BASES.forEach(b => progress[b.id] = { stars:0, bestDamage:0 });
+let session = null;
+let timerHandle = null;
+
+/* =========================================================
+   INIT & PLAYER NAME PROMPT
+   ========================================================= */
+window.onload = function() {
+  loadGameData();
+  if (scriptUrl) document.getElementById("scriptUrlInput").value = scriptUrl;
+
+  if (!playerName) {
+    promptPlayerName();
+  } else {
+    document.getElementById("playerTag").innerText = "👤 " + playerName;
+  }
+  
+  if (new URLSearchParams(window.location.search).get("admin") === "1") {
+    document.getElementById("adminPanel").style.display = "block";
+  }
+  renderMap();
+};
+
+function promptPlayerName() {
+  setTimeout(() => {
+    const name = prompt("Selamat datang di PHYSIQUEST!\nMasukkan nama lengkap kamu untuk memulai:");
+    if (name && name.trim()) {
+      playerName = name.trim();
+      localStorage.setItem("physiquest_player_name", playerName);
+      document.getElementById("playerTag").innerText = "👤 " + playerName;
+    } else {
+      playerName = "Siswa Anonim";
+      document.getElementById("playerTag").innerText = "👤 " + playerName;
+    }
+  }, 300);
+}
+
+function toggleAdminPrompt() {
+  const pwd = prompt("Masukkan Kata Sandi Admin (Guru):");
+  if (pwd === "guru" || pwd === "admin123") {
+    document.getElementById("adminPanel").style.display = "block";
+    alert("Mode Admin Aktif!");
+  } else {
+    alert("Kata sandi salah!");
+  }
+}
+
+function saveScriptUrl() {
+  const url = document.getElementById("scriptUrlInput").value.trim();
+  scriptUrl = url;
+  localStorage.setItem("physiquest_script_url", scriptUrl);
+  alert("URL Apps Script berhasil disimpan!");
+}
+
+/* =========================================================
+   MAP RENDER
+   ========================================================= */
+function isBaseUnlocked(id){
+  if(id===1) return true;
+  return progress[id-1].stars >= 1;
+}
+
+function renderMap(){
+  const wrap = document.getElementById("nodesWrap");
+  wrap.innerHTML = "";
+  let totalStars = 0;
+  BASES.forEach((b,i) => {
+    totalStars += progress[b.id].stars;
+    const unlocked = isBaseUnlocked(b.id);
+    const cleared = progress[b.id].stars >= 1;
+    const col = document.createElement("div");
+    col.className = "node-col";
+    col.style = (i%2===0) ? "margin-bottom:0px;" : "margin-bottom:60px;";
+    let cls = "node";
+    if(b.boss) cls += " boss";
+    if(!unlocked) cls += " locked"; else if(cleared) cls += " cleared"; else cls += " available";
+    const starsHtml = [1,2,3].map(n => `<span class="${n<=progress[b.id].stars ? 'on':''}">★</span>`).join("");
+    col.innerHTML = `
+      <div class="${cls}" ${unlocked?`onclick="openBase(${b.id})"`:""}>
+        ${unlocked ? b.icon : "🔒"}
+        <div class="node-stars">${starsHtml}</div>
+      </div>
+      <div class="node-label"><b>${b.boss?'BOSS':'Base '+b.id}</b>${b.name}</div>
+    `;
+    wrap.appendChild(col);
+  });
+  document.getElementById("totalStars").innerText = totalStars;
+}
+
+/* =========================================================
+   GAMEPLAY FLOW
+   ========================================================= */
+function openBase(id){
+  const base = BASES.find(b=>b.id===id);
+  session = { baseId:id, babakIdx:0, qIdx:0, babakScores:{}, currentAnswers:[], startedAt:Date.now() };
+  startTracker(base);
+  document.getElementById("modalTitle").innerText = base.name;
+  document.getElementById("modalSub").innerText = base.subtitle;
+  document.getElementById("overlay").classList.add("open");
+  renderMateri();
+}
+
+function closeModal(){
+  clearInterval(timerHandle);
+  document.getElementById("overlay").classList.remove("open");
+  session = null;
+}
+
+function currentBase(){ return BASES.find(b=>b.id===session.baseId); }
+function currentBabakKey(){ return BABAK_ORDER[session.babakIdx]; }
+function currentQuestions(){ return currentBase().babak[currentBabakKey()]; }
+function currentQuestion(){ return currentQuestions()[session.qIdx]; }
+
+function renderMateri(){
+  const body = document.getElementById("modalBody");
+  body.innerHTML = `
+    <div class="materi-box">${currentBase().materi}</div>
+    <button class="btn btn-ember" style="width:100%;" onclick="startBabak()">Saya Sudah Paham — Mulai Babak Memorize</button>
+  `;
+}
+
+function startBabak(){
+  session.qIdx = 0;
+  session.currentAnswers = [];
+  renderQuestion();
+}
+
+function tabsHtml(){
+  return BABAK_ORDER.map((k,i) => {
+    let cls = "tab";
+    if(i < session.babakIdx) cls += " done";
+    else if(i === session.babakIdx) cls += " active";
+    return `<div class="${cls}">${BABAK_LABEL[k]}</div>`;
+  }).join("");
+}
+
+function renderQuestion(){
+  clearInterval(timerHandle);
+  const body = document.getElementById("modalBody");
+  const q = currentQuestion();
+  const qNum = session.qIdx + 1;
+  const total = currentQuestions().length;
+  const babakKey = currentBabakKey();
+  const timeLimit = q.time || TIME_DEFAULT[babakKey];
+  session.timeLeft = timeLimit;
+
+  let inputHtml = "";
+  if(q.type === "numeric"){
+    inputHtml = `<div class="answer-row">
+      <input type="text" id="ansInput" placeholder="Jawaban angka${q.unit?' ('+q.unit+')':''}">
+      <button class="btn btn-ember" onclick="submitAnswer(false)">Tembak!</button>
+    </div>`;
+  } else if(q.type === "short"){
+    inputHtml = `<div class="answer-row">
+      <input type="text" id="ansInput" placeholder="Jawaban singkat">
+      <button class="btn btn-ember" onclick="submitAnswer(false)">Tembak!</button>
+    </div>`;
+  } else {
+    inputHtml = `<textarea id="ansInput" placeholder="Tulis jawaban/analisis kamu di sini..."></textarea>
+      <div style="margin-top:10px; text-align:right;">
+        <button class="btn btn-ember" onclick="submitAnswer(false)">Tembak!</button>
+      </div>`;
+  }
+
+  body.innerHTML = `
+    <div class="babak-tabs">${tabsHtml()}</div>
+    <div class="timer-wrap">
+      <div class="timer-track"><div class="timer-fill" id="timerFill" style="width:100%;"></div></div>
+      <div class="timer-num" id="timerNum">${timeLimit}s</div>
+    </div>
+    <div class="q-box">
+      <div class="q-label">${BABAK_LABEL[babakKey]} — Soal ${qNum}/${total}</div>
+      <div class="q-text">${q.q}</div>
+      ${inputHtml}
+      <div class="feedback" id="feedback"></div>
+    </div>
+  `;
+
+  timerHandle = setInterval(() => {
+    session.timeLeft -= 1;
+    const pct = Math.max(0, (session.timeLeft / timeLimit) * 100);
+    const fill = document.getElementById("timerFill");
+    const num = document.getElementById("timerNum");
+    if(fill){
+      fill.style.width = pct + "%";
+      fill.style.background = pct < 25 ? "var(--danger)" : (pct < 55 ? "var(--gold)" : "var(--success)");
+    }
+    if(num) num.innerText = Math.max(0, session.timeLeft) + "s";
+    if(session.timeLeft <= 0){
+      clearInterval(timerHandle);
+      submitAnswer(true);
+    }
+  }, 1000);
+}
+
+/* =========================================================
+   PENILAIAN ESAI TOLERAN & PEMERIKSAAN JAWABAN
+   ========================================================= */
+function gradeQuestion(q, raw){
+  const norm = s => (s||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+  if(q.type === "numeric"){
+    const val = parseFloat(String(raw).replace(",", "."));
+    if(isNaN(val)) return 0;
+    return Math.abs(val - q.answer) <= q.tol ? 1 : 0;
+  }
+  if(q.type === "short"){
+    const n = norm(raw);
+    if(!n) return 0;
+    return q.accepted.some(a => n.includes(norm(a)) || norm(a).includes(n)) ? 1 : 0;
+  }
+  if(q.type === "clusters"){
+    const n = (raw||"").toLowerCase();
+    if(!n.trim()) return 0;
+    let matchedClusters = 0;
+    q.clusters.forEach(cluster => {
+      if(cluster.some(keyword => n.includes(keyword.toLowerCase()))) {
+        matchedClusters++;
+      }
+    });
+    // Toleran: Jika menemukan minimal (total_cluster - 1), dianggap paham intinya
+    return matchedClusters >= Math.max(1, q.clusters.length - 1) ? 1 : 0;
+  }
+  return 0;
+}
+
+function submitAnswer(timedOut){
+  clearInterval(timerHandle);
+  const q = currentQuestion();
+  const raw = timedOut ? (document.getElementById("ansInput") ? document.getElementById("ansInput").value : "") : document.getElementById("ansInput").value;
+  const score = gradeQuestion(q, raw);
+  session.currentAnswers.push(score);
+  sendTrackerUpdate({event:"answer", status:"Mengerjakan", answerSubmitted:true, score:score, question:session.qIdx+1});
+
+  const fb = document.getElementById("feedback");
+  fb.classList.add("show");
+  if(timedOut && !raw){
+    fb.className = "feedback show no";
+    fb.innerHTML = `<b>Waktu habis!</b> Soal ini dihitung belum terjawab.${q.model ? `<div class="model-ans">Arah jawaban: ${q.model}</div>` : ""}`;
+  } else if(score === 1){
+    fb.className = "feedback show ok";
+    fb.innerHTML = `<b>Benar!</b>${q.model ? `<div class="model-ans">Contoh jawaban model: ${q.model}</div>` : ""}`;
+  } else {
+    fb.className = "feedback show no";
+    fb.innerHTML = `<b>Kurang tepat.</b>${q.model ? `<div class="model-ans">Arah jawaban yang benar: ${q.model}</div>` : ""}`;
+  }
+
+  setTimeout(() => nextQuestionOrFinishBabak(), 1300);
+}
+
+function nextQuestionOrFinishBabak(){
+  session.qIdx += 1;
+  if(session.qIdx < currentQuestions().length){
+    renderQuestion();
+    return;
+  }
+  const correct = session.currentAnswers.reduce((a,b)=>a+b, 0);
+  const total = session.currentAnswers.length;
+  const pct = Math.round((correct/total) * 100);
+  session.babakScores[currentBabakKey()] = pct;
+  sendTrackerUpdate({event:"babak", status:"Mengerjakan", babak:currentBabakKey(), babakScore:pct, question:currentQuestions().length});
+  renderBabakResult(pct);
+}
+
+function renderBabakResult(pct){
+  const body = document.getElementById("modalBody");
+  const passed = pct >= PASS_THRESHOLD;
+  const babakKey = currentBabakKey();
+  const isLastBabak = session.babakIdx === BABAK_ORDER.length - 1;
+
+  let actionHtml = "";
+  if(passed && !isLastBabak){
+    actionHtml = `<button class="btn btn-success" onclick="advanceBabak()">Lanjut ke Babak ${BABAK_LABEL[BABAK_ORDER[session.babakIdx+1]]}</button>`;
+  } else if(passed && isLastBabak){
+    actionHtml = `<button class="btn btn-success" onclick="finishAttack()">Lihat Hasil Serangan</button>`;
+  } else {
+    actionHtml = `<button class="btn btn-ember" onclick="startBabak()">Ulangi Babak ${BABAK_LABEL[babakKey]}</button>`;
+  }
+
+  body.innerHTML = `
+    <div class="babak-tabs">${tabsHtml()}</div>
+    <div class="result-wrap">
+      <div style="font-size:13px; color:var(--muted);">Hasil Babak ${BABAK_LABEL[babakKey]}</div>
+      <div class="result-pct" style="color:${passed?'var(--success)':'var(--danger)'}">${pct}%</div>
+      <div class="result-msg">
+        ${passed
+          ? `Lulus! (minimal ${PASS_THRESHOLD}% benar)`
+          : `Belum lulus. Perlu minimal ${PASS_THRESHOLD}% benar untuk lanjut — pelajari lagi materinya lalu ulangi babak ini.`}
+      </div>
+      ${actionHtml}
+    </div>
+  `;
+}
+
+function advanceBabak(){
+  session.babakIdx += 1;
+  startBabak();
+}
+
+function finishAttack(){
+  let damage = 0;
+  BABAK_ORDER.forEach(k => {
+    const pct = session.babakScores[k] || 0;
+    damage += (pct/100) * BABAK_WEIGHT[k];
+  });
+  damage = Math.round(damage);
+
+  let stars = 0;
+  let starsStr = "⭐";
+  if(damage >= 100) { stars = 3; starsStr = "⭐⭐⭐"; }
+  else if(damage >= 80) { stars = 2; starsStr = "⭐⭐"; }
+  else if(damage >= 50) { stars = 1; starsStr = "⭐"; }
+
+  const prog = progress[session.baseId];
+  if(stars > prog.stars) prog.stars = stars;
+  if(damage > prog.bestDamage) prog.bestDamage = damage;
+
+  // KIRIM DATA KE GOOGLE SHEETS
+  sendDataToGoogleSheets(currentBase().name, damage, starsStr);
+  sendTrackerUpdate({event:"finish", status:"Selesai", totalScore:damage, stars:starsStr, progress:"Selesai"});
+  stopTracker();
+
+  const body = document.getElementById("modalBody");
+  const starsHtml = [1,2,3].map(n => `<span class="${n<=stars?'on':''}">★</span>`).join("");
+
+  body.innerHTML = `
+    <div class="result-wrap">
+      <div style="font-size:13px; color:var(--muted);">Base Berhasil Ditaklukkan</div>
+      <div class="result-pct">${damage}%</div>
+      <div class="result-stars">${starsHtml}</div>
+      <div class="result-msg">Data nilai telah dicatat. Base berikutnya terbuka di peta.</div>
+      <button class="btn btn-success" onclick="closeModal(); renderMap();">Tutup Peta</button>
+      <button class="btn btn-ghost" style="margin-left:8px;" onclick="openBase(${session.baseId})">Serang Ulang</button>
+    </div>
+  `;
+  renderMap();
+}
+
+/* =========================================================
+   INTEGRASI GOOGLE SHEETS
+   ========================================================= */
+function startTracker(base){
+  stopTracker();
+  trackerStartedAt = Date.now();
+  sendTrackerUpdate({event:"start", status:"Mengerjakan", progress:"0%", question:1, babak:"memorize", base:base.name});
+  trackerHandle = setInterval(() => {
+    if (!session) return;
+    const qs = currentQuestions();
+    const answered = session.currentAnswers ? session.currentAnswers.length : 0;
+    const pct = Math.round((answered / Math.max(1, qs.length)) * 100);
+    sendTrackerUpdate({event:"heartbeat", status:"Mengerjakan", progress:pct + "%", question:Math.min(answered + 1, qs.length), babak:currentBabakKey(), elapsedSeconds:Math.round((Date.now()-trackerStartedAt)/1000)});
+  }, 15000);
+}
+function stopTracker(){ if (trackerHandle) clearInterval(trackerHandle); trackerHandle=null; }
+function sendTrackerUpdate(extra={}){
+  if (!scriptUrl) return;
+  const base = session ? currentBase() : null;
+  const payload = {
+    trackerId, nama:playerName || "Siswa Anonim", base:extra.base || (base ? base.name : "-"),
+    event:extra.event || "heartbeat", status:extra.status || "Mengerjakan",
+    progress:extra.progress || (session ? ((session.currentAnswers.length/Math.max(1,currentQuestions().length))*100).toFixed(0)+"%" : "0%"),
+    babak:extra.babak || (session ? currentBabakKey() : "-"), question:extra.question || (session ? session.qIdx+1 : 0),
+    score:extra.score ?? "", babakScore:extra.babakScore ?? "", totalScore:extra.totalScore ?? "", stars:extra.stars || "",
+    elapsedSeconds:extra.elapsedSeconds ?? (trackerStartedAt ? Math.round((Date.now()-trackerStartedAt)/1000) : 0), timestamp:new Date().toISOString()
+  };
+  fetch(scriptUrl,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})
+    .catch(err=>console.log("Tracker gagal mengirim data:",err));
+}
+function loadTracker(){
+  const panel=document.getElementById("trackerPanel"), status=document.getElementById("trackerStatus"), frame=document.getElementById("trackerFrame");
+  panel.style.display="block";
+  if(!scriptUrl){ status.innerText="Masukkan dan simpan URL Google Apps Script terlebih dahulu."; frame.removeAttribute("src"); return; }
+  status.innerText="Memuat tracker siswa...";
+  frame.src=scriptUrl+(scriptUrl.includes("?")?"&":"?")+"action=trackerView&t="+Date.now();
+  frame.onload=()=>{ status.innerText="Tracker diperbarui: "+new Date().toLocaleTimeString("id-ID"); };
+}
+function escapeHtml(v){return String(v).replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
+function formatTrackerTime(v){if(!v)return "-";const d=new Date(v);return isNaN(d.getTime())?String(v):d.toLocaleString("id-ID");}
+
+function sendDataToGoogleSheets(baseName, totalScore, starsStr) {
+  if (!scriptUrl) return;
+
+  const payload = {
+    nama: playerName || "Siswa Anonim",
+    base: baseName,
+    skorMemorize: (session.babakScores["memorize"] || 0) + "%",
+    skorRecall: (session.babakScores["recall"] || 0) + "%",
+    skorExamine: (session.babakScores["examine"] || 0) + "%",
+    totalSkor: totalScore + "%",
+    bintang: starsStr,
+    trackerId: trackerId,
+    event: "finish",
+    status: "Selesai"
+  };
+
+  fetch(scriptUrl, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  }).catch(err => console.log("Gagal mengirim data ke Sheets:", err));
+}
+
+/* =========================================================
+   IMPOR PDF & STORAGE
+   ========================================================= */
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+
+function saveGameData(){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(BASES));
+    const el=document.getElementById("importStatus");
+    el.className="";
+    el.innerText="Soal berhasil disimpan di browser ini.";
+  } catch(e){
+    const el=document.getElementById("importStatus");
+    el.className="err";
+    el.innerText="Gagal menyimpan soal: "+e.message;
+  }
+}
+
+function loadGameData(){
+  try {
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    const saved=JSON.parse(raw);
+    if(Array.isArray(saved) && saved.length > 0) BASES = saved;
+  } catch(e){ console.warn("Data tersimpan tidak dapat dimuat",e); }
+}
+
+function resetGameData(){
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+function downloadTemplate(){
+  const template = `BASE: 2
+BABAK: MEMORIZE
+Q: Tuliskan rumus kalor untuk menaikkan suhu suatu zat!
+TIPE: SHORT
+JAWABAN: Q=mcdT, mct
+WAKTU: 20
+
+Q: Apa yang dimaksud dengan kalor laten?
+TIPE: CLUSTERS
+KATAKUNCI: wujud | tanpa, tetap | suhu
+MODEL: Kalor laten adalah kalor untuk mengubah wujud zat tanpa disertai perubahan suhu.
+WAKTU: 25
+
+BABAK: RECALL
+Q: Hitung kalor untuk memanaskan 2 kg air dari 25 derajat C ke 75 derajat C! Jawab dalam kJ.
+TIPE: NUMERIC
+JAWABAN: 420
+TOLERANSI: 8
+SATUAN: kJ
+WAKTU: 120
+
+BABAK: EXAMINE
+Q: Jelaskan kenapa suhu tetap saat perubahan wujud meski dipanaskan terus!
+TIPE: CLUSTERS
+KATAKUNCI: ikatan, partikel | wujud | laten
+MODEL: Energi kalor dipakai memutus ikatan antarpartikel untuk mengubah wujud, bukan menaikkan suhu.
+WAKTU: 150
+`;
+  const blob = new Blob([template], {type:"text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "template-impor-soal.txt";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
